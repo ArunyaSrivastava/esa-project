@@ -1,6 +1,6 @@
 """
 SensorSource Abstract Interface and Normalized Packet Schema.
-Enables plug-and-play interchangeability between WESAD Replay and future physical ESP32.
+Enables seamless interchangeability between WESAD Replay and physical Arduino Uno hardware.
 """
 
 from abc import ABC, abstractmethod
@@ -13,17 +13,23 @@ import numpy as np
 class NormalizedPacket:
     timestamp: float
     subject_id: str
-    eda: float  # Electrodermal Activity (microSiemens / standardized)
-    ecg: float  # Electrocardiogram (mV / standardized)
-    respiration: float  # Respiration amplitude (standardized)
-    temperature: float  # Skin temperature (Celsius / standardized)
-    acc_x: float  # Accelerometer X (g)
-    acc_y: float  # Accelerometer Y (g)
-    acc_z: float  # Accelerometer Z (g)
-    acc_mag: float  # sqrt(x^2 + y^2 + z^2)
+    eda: float = 0.0  # Electrodermal Activity (microSiemens / standardized)
+    ecg: float = 0.0  # Electrocardiogram (mV / standardized)
+    respiration: float = 0.0  # Respiration amplitude (standardized)
+    temperature: float = 0.0  # Skin temperature (Celsius / standardized)
+    acc_x: float = 0.0  # Accelerometer X (g)
+    acc_y: float = 0.0  # Accelerometer Y (g)
+    acc_z: float = 0.0  # Accelerometer Z (g)
+    acc_mag: float = 1.0  # sqrt(x^2 + y^2 + z^2)
+    gyro_x: float = 0.0  # Gyroscope X (deg/s)
+    gyro_y: float = 0.0  # Gyroscope Y (deg/s)
+    gyro_z: float = 0.0  # Gyroscope Z (deg/s)
+    gyro_mag: float = 0.0  # sqrt(gx^2 + gy^2 + gz^2)
     heart_rate: Optional[float] = None  # Estimated heart rate in BPM
+    spo2: Optional[float] = None  # Blood oxygen percentage (%)
+    finger_detected: bool = True  # MAX30102 finger contact detection
     ground_truth_label: int = -1  # 0: Baseline, 1: Stress, 2: Amusement, -1: None
-    source_type: str = "WESAD_REPLAY"  # WESAD_REPLAY, SYNTHETIC, ESP32_LIVE
+    source_type: str = "WESAD_REPLAY"  # WESAD_REPLAY, SYNTHETIC, ARDUINO_LIVE
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -32,7 +38,7 @@ class NormalizedPacket:
 class SensorSource(ABC):
     """
     Abstract Base Class for Sensor Sources.
-    Both WESAD Replay and future ESP32 drivers implement this contract.
+    Both WESAD Replay and physical Arduino drivers implement this contract.
     """
 
     @abstractmethod

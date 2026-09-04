@@ -1,31 +1,29 @@
+"""
+Central Application Orchestrator & High-Frequency Streaming Engine.
+Synchronizes Camera Vision, Sensor Streams (WESAD Replay or physical Arduino Uno),
+Machine Learning Inference, Multimodal Fusion, and WebSocket broadcasting.
+"""
+
 import asyncio
-import base64
 import time
-import sys
-from pathlib import Path
+import base64
 from typing import Optional, Dict, Any
-
-# Ensure project root is in sys.path
-BASE_DIR = Path(__file__).resolve().parent.parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
-
+import numpy as np
 import cv2
-import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.config import (
-    HOST,
-    PORT,
-    STATIC_DIR,
-    WESAD_DIR,
-    WEBSOCKET_FPS,
     DEFAULT_SUBJECT,
+    WEBSOCKET_FPS,
+    WESAD_DIR,
+    STATIC_DIR,
 )
 from backend.data.replay_engine import ReplayEngine
+from backend.data.arduino_adapter import ArduinoSensorSource
 from backend.ml.inference import SensorMLPredictor
+from backend.ml.hardware_inference import HardwareDistressInference
 from backend.vision.camera import CameraManager
 from backend.vision.detector import PoseDetector
 from backend.vision.pose_features import PoseFeatureAnalyzer
@@ -39,6 +37,7 @@ from backend.api.websocket import manager as ws_manager
 class MultimodalPipelineRunner:
     """
     Central pipeline orchestrator running the synchronized multi-sensor loop.
+    Supports both WESAD Replay (LSTM) and physical Arduino Uno (Hardware Inference).
     """
 
     def __init__(self):
@@ -46,13 +45,17 @@ class MultimodalPipelineRunner:
         print("   MULTIMODAL THREAT & DISTRESS DETECTION SYSTEM   ")
         print("==================================================")
 
-        # 1. Initialize Sensor Replay Engine (WESAD)
+        # 1. Initialize Sensor Sources
         self._ensure_dataset_present()
         self.replay_engine = ReplayEngine(subject_id=DEFAULT_SUBJECT)
         self.replay_engine.start()
+        
+        self.arduino_source = ArduinoSensorSource()
+        self.active_source_type = "WESAD_REPLAY"  # "WESAD_REPLAY" or "ARDUINO_LIVE"
 
-        # 2. Initialize Sensor ML Predictor
-        self.sensor_ml = SensorMLPredictor()
+        # 2. Initialize Inference Models
+        self.sensor_ml = SensorMLPredictor()  # PyTorch 2-layer LSTM for WESAD
+        self.hardware_ml = HardwareDistressInference()  # Dedicated hardware inference for Arduino
 
         # 3. Initialize Vision Subsystem (Webcam + YOLOv8)
         self.camera = CameraManager()
@@ -82,6 +85,19 @@ class MultimodalPipelineRunner:
             from scripts.generate_synthetic_wesad import generate_all_sample_subjects
             generate_all_sample_subjects()
 
+    def set_source_type(self, source_type: str) -> bool:
+        """Switch active sensor source between WESAD_REPLAY and ARDUINO_LIVE."""
+        s_upper = source_type.upper()
+        if "ARDUINO" in s_upper or "HARDWARE" in s_upper:
+            self.active_source_type = "ARDUINO_LIVE"
+            event_logger.log_event("SOURCE", "Active Sensor Modality switched to: ARDUINO LIVE")
+            return True
+        elif "WESAD" in s_upper or "REPLAY" in s_upper:
+            self.active_source_type = "WESAD_REPLAY"
+            event_logger.log_event("SOURCE", "Active Sensor Modality switched to: WESAD REPLAY")
+            return True
+        return False
+
     def set_demo_scenario(self, scenario: str) -> None:
         """Configure demo mode behavior and trigger appropriate sensor/vision state."""
         self.active_demo_scenario = scenario.upper()
@@ -105,14 +121,20 @@ class MultimodalPipelineRunner:
                 vision_analysis = self.pose_analyzer.analyze(detection, raw_frame)
                 annotated_frame = self.pose_analyzer.render_overlay(raw_frame, detection, vision_analysis)
 
-                # 2. Process Sensor Modality (WESAD Replay)
-                sensor_packet = self.replay_engine.get_next_sample()
-                sensor_window = self.replay_engine.get_current_window()
-                sensor_pred = self.sensor_ml.predict_window(sensor_window)
-                
-                # Advance replay playback based on sampling rate & speed
-                samples_to_advance = max(1, int(32 * interval * self.replay_engine.speed))
-                self.replay_engine.advance(samples_to_advance)
+                # 2. Process Sensor Modality (WESAD Replay or Arduino Live)
+                is_arduino_active = (self.active_source_type == "ARDUINO_LIVE" and self.arduino_source.is_connected)
+
+                if is_arduino_active:
+                    sensor_packet = self.arduino_source.get_next_sample()
+                    sensor_pred = self.hardware_ml.predict(sensor_packet, self.arduino_source.get_current_window())
+                else:
+                    sensor_packet = self.replay_engine.get_next_sample()
+                    sensor_window = self.replay_engine.get_current_window()
+                    sensor_pred = self.sensor_ml.predict_window(sensor_window)
+                    
+                    # Advance replay playback based on sampling rate & speed
+                    samples_to_advance = max(1, int(32 * interval * self.replay_engine.speed))
+                    self.replay_engine.advance(samples_to_advance)
 
                 # 3. Determine Distress Scores with Demo Scenario Logic
                 sensor_distress = sensor_pred["distress_score"]
@@ -151,11 +173,18 @@ class MultimodalPipelineRunner:
                         meta=state_event,
                     )
 
-                # 6. Encode Annotated Frame to JPEG Base64
+                # 6. Transmit Live Fusion Feedback to Arduino OLED
+                if is_arduino_active:
+                    self.arduino_source.send_feedback(
+                        threat_score_pct=int(fusion_result["threat_score_pct"]),
+                        state_str=fusion_result["verdict"],
+                    )
+
+                # 7. Encode Annotated Frame to JPEG Base64
                 _, buffer = cv2.imencode(".jpg", annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
                 frame_b64 = base64.b64encode(buffer).decode("utf-8")
 
-                # 7. Update Telemetry Counters
+                # 8. Update Telemetry Counters
                 self._packet_count += 1
                 self._fps_counter += 1
                 now = time.time()
@@ -164,12 +193,13 @@ class MultimodalPipelineRunner:
                     self._fps_counter = 0
                     self._last_fps_calc = now
 
-                # 8. Construct WebSocket Payload
+                # 9. Construct WebSocket Payload
                 payload = {
                     "type": "TELEMETRY",
                     "timestamp": now,
                     "fps": self._current_fps,
                     "packet_counter": self._packet_count,
+                    "active_source_type": self.active_source_type,
                     "demo_scenario": self.active_demo_scenario,
                     "camera_frame": f"data:image/jpeg;base64,{frame_b64}",
                     "sensor_packet": sensor_packet.to_dict() if sensor_packet else {},
@@ -179,6 +209,7 @@ class MultimodalPipelineRunner:
                         "probabilities": sensor_pred["probabilities"],
                         "predicted_label": sensor_pred["predicted_label"],
                         "latency_ms": sensor_pred["latency_ms"],
+                        "source": "ARDUINO_LIVE" if is_arduino_active else "WESAD_LSTM",
                     },
                     "vision_ml": {
                         "distress_score": vision_distress,
@@ -195,10 +226,11 @@ class MultimodalPipelineRunner:
                     "fusion": fusion_result,
                     "state_machine": self.state_machine.get_state_summary(),
                     "replay": self.replay_engine.get_current_state(),
+                    "arduino": self.arduino_source.get_current_state(),
                     "recent_logs": event_logger.get_recent_logs(20),
                 }
 
-                # 9. Broadcast to Connected Web Clients
+                # 10. Broadcast to Connected Web Clients
                 await ws_manager.broadcast_json(payload)
 
                 # Pacing sleep
@@ -240,6 +272,7 @@ async def shutdown_event():
         runner._is_running = False
         runner.camera.stop()
         runner.replay_engine.stop()
+        runner.arduino_source.disconnect()
 
 
 # Mount REST API
@@ -262,12 +295,3 @@ async def websocket_endpoint(websocket: WebSocket):
 
 # Mount Static Frontend
 app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="frontend")
-
-
-def main():
-    print(f"Starting Personal Safety Monitor Dashboard on http://localhost:{PORT} ...")
-    uvicorn.run("backend.main:app", host=HOST, port=PORT, reload=False, log_level="warning")
-
-
-if __name__ == "__main__":
-    main()

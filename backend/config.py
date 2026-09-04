@@ -27,6 +27,11 @@ WINDOW_SIZE_SECONDS = 4  # 4 seconds per sub-window for real-time inference (128
 WINDOW_STEP_SECONDS = 1  # 1 second step
 WINDOW_SAMPLES = SENSOR_SAMPLING_RATE_HZ * WINDOW_SIZE_SECONDS  # 128 samples
 
+# Physical Hardware Settings (Arduino Uno + MAX30102 + MPU6050 + SSD1306)
+DEFAULT_ARDUINO_PORT = "COM3"
+DEFAULT_ARDUINO_BAUD = 115200
+ARDUINO_SAMPLING_RATE_HZ = 15  # Arduino hardware sample rate (15-20 Hz)
+
 # Sensor Features
 FEATURE_CHANNELS = ["eda", "ecg", "respiration", "temperature", "acc_mag"]
 NUM_CLASSES = 3  # 0: Baseline, 1: Stress, 2: Amusement

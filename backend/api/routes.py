@@ -1,13 +1,14 @@
 """
-REST API Endpoints for System Control and Auditing.
+REST API Endpoints for System Control, Modality Switching, Arduino Hardware Management, and Auditing.
 """
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from backend.utils.logging import event_logger
+from backend.data.arduino_adapter import ArduinoSensorSource
 
 router = APIRouter(prefix="/api")
 
@@ -18,6 +19,16 @@ class ReplayControlRequest(BaseModel):
     seek_fraction: Optional[float] = None
     subject_id: Optional[str] = None
     scenario: Optional[str] = None
+
+
+class ArduinoConnectRequest(BaseModel):
+    action: str  # connect, disconnect
+    port: Optional[str] = None
+    baudrate: Optional[int] = 115200
+
+
+class SourceSelectRequest(BaseModel):
+    source_type: str  # WESAD_REPLAY, ARDUINO_LIVE
 
 
 class WeightConfigRequest(BaseModel):
@@ -36,6 +47,59 @@ pipeline_runner = None
 def set_pipeline_runner(runner):
     global pipeline_runner
     pipeline_runner = runner
+
+
+@router.get("/arduino/ports")
+def list_arduino_ports():
+    """List all available serial COM ports for Arduino Uno connection."""
+    ports = ArduinoSensorSource.list_available_ports()
+    return {"ports": ports}
+
+
+@router.post("/arduino/connect")
+def control_arduino(req: ArduinoConnectRequest):
+    """Connect or disconnect Arduino USB serial connection."""
+    if not pipeline_runner:
+        raise HTTPException(status_code=503, detail="Pipeline not initialized")
+
+    ard = pipeline_runner.arduino_source
+    act = req.action.lower()
+
+    if act == "connect":
+        port = req.port or ard.port
+        success = ard.connect(port)
+        if success:
+            # Auto-switch active source to Arduino Live when user explicitly connects
+            pipeline_runner.set_source_type("ARDUINO_LIVE")
+            event_logger.log_event("HARDWARE", f"Arduino connected on {port} at {req.baudrate} baud.")
+            return {"status": "success", "connected": True, "port": port, "active_source": pipeline_runner.active_source_type}
+        else:
+            raise HTTPException(status_code=400, detail=f"Failed to connect to {port}: {ard._connection_error}")
+    elif act == "disconnect":
+        ard.disconnect()
+        # Fall back to WESAD replay if Arduino disconnected
+        pipeline_runner.set_source_type("WESAD_REPLAY")
+        event_logger.log_event("HARDWARE", "Arduino disconnected. Fell back to WESAD Replay.")
+        return {"status": "success", "connected": False, "active_source": pipeline_runner.active_source_type}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'connect' or 'disconnect'.")
+
+
+@router.post("/source/select")
+def select_source(req: SourceSelectRequest):
+    """Switch active wearable modality source between WESAD_REPLAY and ARDUINO_LIVE."""
+    if not pipeline_runner:
+        raise HTTPException(status_code=503, detail="Pipeline not initialized")
+
+    success = pipeline_runner.set_source_type(req.source_type)
+    if not success:
+        raise HTTPException(status_code=400, detail=f"Invalid source type: {req.source_type}. Use WESAD_REPLAY or ARDUINO_LIVE.")
+
+    return {
+        "status": "success",
+        "active_source_type": pipeline_runner.active_source_type,
+        "arduino_connected": pipeline_runner.arduino_source.is_connected,
+    }
 
 
 @router.post("/replay/control")
@@ -131,16 +195,18 @@ def export_csv_logs():
 
 @router.get("/status")
 def get_system_status():
+    is_ard = (pipeline_runner and pipeline_runner.arduino_source.is_connected)
     return {
         "status": "ONLINE",
+        "active_source_type": pipeline_runner.active_source_type if pipeline_runner else "WESAD_REPLAY",
         "data_source": {
-            "wearable": f"WESAD Replay ({pipeline_runner.replay_engine.subject_id if pipeline_runner else 'S2'})",
+            "wearable": "Physical Arduino Uno (Live USB Serial)" if is_ard else f"WESAD Replay ({pipeline_runner.replay_engine.subject_id if pipeline_runner else 'S2'})",
             "camera": "Live Laptop Webcam" if (pipeline_runner and pipeline_runner.camera.is_camera_live) else "Synthetic Fallback Pattern",
-            "hardware": "Not Connected (ESP32 Ready)",
+            "hardware": f"Connected ({pipeline_runner.arduino_source.port})" if is_ard else "Disconnected (Ready)",
         },
         "models": {
-            "sensor_model": "PyTorch 2-Layer LSTM Classifier (Trained)",
-            "vision_model": "YOLOv8n-Pose Keypoint Model (CUDA Accelerated)",
+            "sensor_model": "Hardware Distress Inference (MAX30102+MPU6050)" if is_ard else "PyTorch 2-Layer LSTM (WESAD 5-Channel)",
+            "vision_model": "YOLOv8n-Pose + Facial Landmark Detector",
             "fusion": "Weighted Multimodal Decision Engine",
         }
     }

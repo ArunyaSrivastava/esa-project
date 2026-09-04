@@ -61,24 +61,28 @@
       </div>
     </div>
 
-    <!-- Modality Status Tags -->
-    <div class="flex flex-wrap items-center gap-2 text-xs">
-      <div class="badge-uni badge-cyan flex items-center gap-1">
-        <span>Wearable:</span>
-        <span class="text-uni-contrast font-semibold">WESAD Replay</span>
-        <span id="currentSubjectBadge" class="bg-uni-dark px-1 text-uni-neon">S2</span>
-      </div>
-      <div class="badge-uni badge-neon flex items-center gap-1">
-        <span>Camera:</span>
-        <span class="text-uni-contrast font-semibold">Live Webcam</span>
-      </div>
-      <div class="badge-uni text-uni-muted flex items-center gap-1">
-        <span>Hardware:</span>
-        <span class="text-uni-muted">ESP32 Ready</span>
-      </div>
+    <!-- Modality Source Selection Tabs -->
+    <div class="flex items-center gap-1 bg-uni-panel p-1 border border-uni-border rounded">
+      <button id="btnSourceWesad" class="btn-uni btn-neon text-xs py-1 px-3">
+        ⚡ WESAD Replay
+      </button>
+      <button id="btnSourceArduino" class="btn-uni btn-dark text-xs py-1 px-3">
+        🔌 Arduino Live
+      </button>
     </div>
 
-    <!-- Controls -->
+    <!-- Hardware COM Port & Status -->
+    <div class="flex items-center gap-2 text-xs">
+      <select id="arduinoPortSelect" class="bg-uni-dark border border-uni-border text-uni-contrast text-xs px-2 py-1 font-mono cursor-pointer">
+        <option value="COM3">COM3 (Default)</option>
+      </select>
+      <button id="btnArduinoConnect" class="btn-uni btn-dark text-xs py-1 px-2.5 border border-uni-border hover:border-uni-neon">
+        Connect
+      </button>
+      <span id="arduinoStatusBadge" class="badge-uni text-uni-muted">Hardware: Standby</span>
+    </div>
+
+    <!-- System Controls -->
     <div class="flex items-center gap-2">
       <span id="wsStatusBadge" class="badge-uni badge-neon">● Live</span>
       <span id="streamFps" class="badge-uni text-uni-muted">30 FPS</span>
@@ -141,30 +145,30 @@
         <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-uni-cyan animate-pulse"></span>
-            <h2 class="text-xs font-display font-semibold uppercase tracking-wider text-uni-contrast">
+            <h2 id="sensorCardTitle" class="text-xs font-display font-semibold uppercase tracking-wider text-uni-contrast">
               Wearable Sensors (WESAD Stream)
             </h2>
           </div>
-          <span id="groundTruthLabel" class="badge-uni badge-neon text-[10px]">Baseline</span>
+          <span id="groundTruthLabel" class="badge-uni badge-neon text-[10px]">WESAD S2</span>
         </div>
 
-        <!-- Metric Tiles -->
+        <!-- Dynamic Metric Tiles -->
         <div class="grid grid-cols-3 gap-2 mb-3">
           <div class="bg-uni-dark p-2.5 border border-uni-border">
             <div class="text-[10px] text-uni-muted uppercase">Heart Rate</div>
             <div id="valHR" class="text-sm font-display font-bold text-uni-contrast mt-1">-- BPM</div>
           </div>
           <div class="bg-uni-dark p-2.5 border border-uni-border">
-            <div class="text-[10px] text-uni-muted uppercase">EDA (Sweat Level)</div>
-            <div id="valEDA" class="text-sm font-display font-bold text-uni-cyan mt-1">-- µS</div>
+            <div id="lblSlot2" class="text-[10px] text-uni-muted uppercase">EDA (Sweat)</div>
+            <div id="valSlot2" class="text-sm font-display font-bold text-uni-cyan mt-1">-- µS</div>
           </div>
           <div class="bg-uni-dark p-2.5 border border-uni-border">
-            <div class="text-[10px] text-uni-muted uppercase">Respiration</div>
-            <div id="valResp" class="text-sm font-display font-bold text-uni-neon mt-1">--</div>
+            <div id="lblSlot3" class="text-[10px] text-uni-muted uppercase">Respiration</div>
+            <div id="valSlot3" class="text-sm font-display font-bold text-uni-neon mt-1">--</div>
           </div>
           <div class="bg-uni-dark p-2.5 border border-uni-border">
-            <div class="text-[10px] text-uni-muted uppercase">Skin Temp</div>
-            <div id="valTemp" class="text-sm font-display font-bold text-uni-contrast mt-1">-- °C</div>
+            <div id="lblSlot4" class="text-[10px] text-uni-muted uppercase">Skin Temp</div>
+            <div id="valSlot4" class="text-sm font-display font-bold text-uni-contrast mt-1">-- °C</div>
           </div>
           <div class="bg-uni-dark p-2.5 border border-uni-border">
             <div class="text-[10px] text-uni-muted uppercase">Motion Mag</div>
@@ -180,21 +184,21 @@
         <div class="space-y-2">
           <div>
             <div class="flex justify-between text-[10px] text-uni-muted mb-0.5">
-              <span>Electrodermal Activity (EDA)</span>
+              <span id="chartLabel1">Electrodermal Activity (EDA)</span>
               <span class="text-uni-cyan">Live</span>
             </div>
             <canvas id="edaCanvas" width="360" height="40" class="w-full h-10 bg-uni-dark border border-uni-border"></canvas>
           </div>
           <div>
             <div class="flex justify-between text-[10px] text-uni-muted mb-0.5">
-              <span>Respiration Waveform</span>
+              <span id="chartLabel2">Respiration Waveform</span>
               <span class="text-uni-neon">Live</span>
             </div>
             <canvas id="respCanvas" width="360" height="40" class="w-full h-10 bg-uni-dark border border-uni-border"></canvas>
           </div>
           <div>
             <div class="flex justify-between text-[10px] text-uni-muted mb-0.5">
-              <span>Acceleration Magnitude</span>
+              <span id="chartLabel3">Acceleration Magnitude (g)</span>
               <span class="text-uni-warning">Live</span>
             </div>
             <canvas id="accCanvas" width="360" height="40" class="w-full h-10 bg-uni-dark border border-uni-border"></canvas>
@@ -206,11 +210,11 @@
     <!-- ROW 2: ML MODEL PROBABILITIES -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       
-      <!-- Sensor LSTM Model -->
+      <!-- Sensor Inference Model -->
       <div class="uni-card p-4">
         <div class="corner-accent"></div>
         <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
-          <h3 class="text-xs font-display font-semibold uppercase text-uni-contrast">
+          <h3 id="modelCardTitle" class="text-xs font-display font-semibold uppercase text-uni-contrast">
             Sensor Sequence Model (LSTM)
           </h3>
           <span id="sensorLatency" class="badge-uni text-uni-muted">1.8 ms</span>
@@ -219,7 +223,7 @@
         <div class="space-y-2.5">
           <div>
             <div class="flex justify-between text-xs mb-1">
-              <span class="text-uni-muted">Baseline State (Calm)</span>
+              <span id="lblProb1" class="text-uni-muted">Baseline State (Calm)</span>
               <span id="probBaseline" class="font-bold text-uni-neon">88%</span>
             </div>
             <div class="w-full h-2 bg-uni-dark border border-uni-border">
@@ -229,7 +233,7 @@
 
           <div>
             <div class="flex justify-between text-xs mb-1">
-              <span class="text-uni-muted">Stress / Distress State</span>
+              <span id="lblProb2" class="text-uni-muted">Stress / Distress State</span>
               <span id="probStress" class="font-bold text-uni-alert">8%</span>
             </div>
             <div class="w-full h-2 bg-uni-dark border border-uni-border">
@@ -239,7 +243,7 @@
 
           <div>
             <div class="flex justify-between text-xs mb-1">
-              <span class="text-uni-muted">Amusement State (Positive Affect)</span>
+              <span id="lblProb3" class="text-uni-muted">Amusement / Motion State</span>
               <span id="probAmusement" class="font-bold text-uni-cyan">4%</span>
             </div>
             <div class="w-full h-2 bg-uni-dark border border-uni-border">
@@ -293,7 +297,7 @@
           <h2 class="text-sm font-display font-bold uppercase text-uni-contrast">
             Multimodal Threat Decision
           </h2>
-          <p class="text-xs text-uni-muted">Combines physiological stress and visual cues to prevent false alarms</p>
+          <p class="text-xs text-uni-muted">Combines physiological signals and visual cues into an auditable safety verdict</p>
         </div>
         <div class="flex items-center gap-3">
           <span id="fusionConsensus" class="badge-uni badge-cyan text-xs">Normal / Congruent</span>
