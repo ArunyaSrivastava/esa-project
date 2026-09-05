@@ -281,6 +281,15 @@ Click **⚡ RESUME LIVE STREAM** to return to free continuous streaming.
 
 ---
 
+## 📚 Full Documentation
+
+For the complete technical walkthrough — architecture diagrams, the ML stack
+explained in plain language (LSTM, YOLOv8-pose keypoints, fusion scoring), the
+BLE protocol, hardware wiring, and the dataset-fetching options — see
+**[DOCUMENTATION.md](DOCUMENTATION.md)**.
+
+---
+
 ## Academic Integrity & Disclaimer
 
 1. **WESAD Dataset**: Physiological data represents laboratory-induced stress and baseline conditions. It is used here as an academic proxy for wearable autonomic response.

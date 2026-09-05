@@ -22,6 +22,8 @@ from backend.config import (
 )
 from backend.data.replay_engine import ReplayEngine
 from backend.data.arduino_adapter import ArduinoSensorSource
+from backend.data.ble_adapter import BLEWearableSensorSource
+from backend.config import WEARABLE_SOURCE, WEARABLE_BLE_DEVICE_NAME
 from backend.ml.inference import SensorMLPredictor
 from backend.ml.hardware_inference import HardwareDistressInference
 from backend.vision.camera import CameraManager
@@ -49,8 +51,13 @@ class MultimodalPipelineRunner:
         self._ensure_dataset_present()
         self.replay_engine = ReplayEngine(subject_id=DEFAULT_SUBJECT)
         self.replay_engine.start()
-        
-        self.arduino_source = ArduinoSensorSource()
+
+        # 1b. Instatiate the wearable source (wireless BLE or USB serial)
+        if str(WEARABLE_SOURCE).upper() == "BLE":
+            self.arduino_source = BLEWearableSensorSource(device_name=WEARABLE_BLE_DEVICE_NAME)
+            print(f"[Init] Wearable source set to BLE ({WEARABLE_BLE_DEVICE_NAME}).")
+        else:
+            self.arduino_source = ArduinoSensorSource()
         self.active_source_type = "WESAD_REPLAY"  # "WESAD_REPLAY" or "ARDUINO_LIVE"
 
         # 2. Initialize Inference Models

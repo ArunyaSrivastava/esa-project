@@ -41,10 +41,27 @@ class CameraManager:
         self._thread = threading.Thread(target=self._capture_loop, daemon=True)
         self._thread.start()
 
+    @staticmethod
+    def _preferred_backend() -> int:
+        """
+        Select the optimal OpenCV VideoCapture backend for the current OS.
+        DirectShow (CAP_DSHOW) is Windows-only; macOS uses AVFoundation,
+        and Linux/other use the auto-selected default (CAP_ANY).
+        """
+        import platform
+        system = platform.system().lower()
+        if system == "darwin":
+            return cv2.CAP_AVFOUNDATION
+        if system == "windows":
+            return cv2.CAP_DSHOW
+        return cv2.CAP_ANY
+
     def _init_camera(self) -> None:
         try:
-            # OpenCV capture on Windows with DirectShow backend for faster init
-            self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+            # Try the platform-preferred backend first (AVFoundation on macOS,
+            # DirectShow on Windows); fall back to the auto default if needed.
+            backend = self._preferred_backend()
+            self.cap = cv2.VideoCapture(self.camera_index, backend)
             if not self.cap.isOpened():
                 # Fallback to default backend
                 self.cap = cv2.VideoCapture(self.camera_index)

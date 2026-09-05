@@ -82,6 +82,58 @@
       <span id="arduinoStatusBadge" class="badge-uni text-uni-muted">Hardware: Standby</span>
     </div>
 
+    <!-- Dashboard Module Visibility Control -->
+    <div class="relative" id="moduleControlWrap">
+      <button id="btnModules" class="btn-uni btn-dark text-xs py-1 px-2.5">
+        ◧ Modules <span id="modulesCount" class="text-uni-cyan">8/8</span>
+      </button>
+      <div id="moduleDropdown" class="hidden absolute top-full right-0 mt-2 w-72 bg-uni-panel border border-uni-border shadow-hard-neon z-50">
+        <div class="px-3 py-2 border-b border-uni-border">
+          <div class="text-[11px] font-display font-semibold uppercase text-uni-contrast">Dashboard Modules</div>
+          <div class="text-[10px] text-uni-muted mt-0.5">Toggle panels to hide techy clutter.</div>
+        </div>
+        <div class="p-2 space-y-0.5 max-h-80 overflow-y-auto">
+          <label class="mod-toggle" data-module-label="camera">
+            <span class="flex items-center gap-2"><span class="mod-dot mod-dot-cyan"></span> Camera Feed</span>
+            <input type="checkbox" data-module-toggle="camera" checked />
+          </label>
+          <label class="mod-toggle" data-module-label="wearable">
+            <span class="flex items-center gap-2"><span class="mod-dot mod-dot-neon"></span> Wearable Sensors</span>
+            <input type="checkbox" data-module-toggle="wearable" checked />
+          </label>
+          <label class="mod-toggle" data-module-label="sensor-model">
+            <span class="flex items-center gap-2"><span class="mod-dot mod-dot-neon"></span> Sensor ML Model (LSTM)</span>
+            <input type="checkbox" data-module-toggle="sensor-model" checked />
+          </label>
+          <label class="mod-toggle" data-module-label="vision-model">
+            <span class="flex items-center gap-2"><span class="mod-dot mod-dot-cyan"></span> Vision ML Model</span>
+            <input type="checkbox" data-module-toggle="vision-model" checked />
+          </label>
+          <label class="mod-toggle" data-module-label="fusion">
+            <span class="flex items-center gap-2"><span class="mod-dot mod-dot-alert"></span> Threat Decision Gauge</span>
+            <input type="checkbox" data-module-toggle="fusion" checked />
+          </label>
+          <label class="mod-toggle" data-module-label="scenarios">
+            <span class="flex items-center gap-2"><span class="mod-dot mod-dot-cyan"></span> Demo Scenarios</span>
+            <input type="checkbox" data-module-toggle="scenarios" checked />
+          </label>
+          <label class="mod-toggle" data-module-label="replay">
+            <span class="flex items-center gap-2"><span class="mod-dot mod-dot-neon"></span> Sensor Replay &amp; Timeline</span>
+            <input type="checkbox" data-module-toggle="replay" checked />
+          </label>
+          <label class="mod-toggle" data-module-label="eventlog">
+            <span class="flex items-center gap-2"><span class="mod-dot mod-dot-warning"></span> Event Log</span>
+            <input type="checkbox" data-module-toggle="eventlog" checked />
+          </label>
+        </div>
+        <div class="px-2 pb-2 pt-1 border-t border-uni-border flex flex-wrap gap-1">
+          <button id="btnModulesShowAll" class="btn-uni btn-dark text-[10px] py-1 px-2">Show All</button>
+          <button id="btnModulesMinimal" class="btn-uni btn-dark text-[10px] py-1 px-2">Minimal</button>
+          <button id="btnModulesHideAll" class="btn-uni btn-dark text-[10px] py-1 px-2">Hide All</button>
+        </div>
+      </div>
+    </div>
+
     <!-- System Controls -->
     <div class="flex items-center gap-2">
       <span id="wsStatusBadge" class="badge-uni badge-neon">● Live</span>
@@ -102,7 +154,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
       
       <!-- Live Camera Feed (7 Cols) -->
-      <div class="lg:col-span-7 uni-card p-4 flex flex-col justify-between">
+      <div data-module="camera" class="lg:col-span-7 uni-card p-4 flex flex-col justify-between">
         <div class="corner-accent"></div>
         <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
           <div class="flex items-center gap-2">
@@ -140,7 +192,7 @@
       </div>
 
       <!-- Wearable Sensor Signals (5 Cols) -->
-      <div class="lg:col-span-5 uni-card p-4 flex flex-col justify-between">
+      <div data-module="wearable" class="lg:col-span-5 uni-card p-4 flex flex-col justify-between">
         <div class="corner-accent"></div>
         <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
           <div class="flex items-center gap-2">
@@ -211,7 +263,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       
       <!-- Sensor Inference Model -->
-      <div class="uni-card p-4">
+      <div data-module="sensor-model" class="uni-card p-4">
         <div class="corner-accent"></div>
         <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
           <h3 id="modelCardTitle" class="text-xs font-display font-semibold uppercase text-uni-contrast">
@@ -254,7 +306,7 @@
       </div>
 
       <!-- Vision Model -->
-      <div class="uni-card p-4">
+      <div data-module="vision-model" class="uni-card p-4">
         <div class="corner-accent"></div>
         <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
           <h3 class="text-xs font-display font-semibold uppercase text-uni-contrast">
@@ -289,7 +341,7 @@
     </div>
 
     <!-- ROW 3: MULTIMODAL FUSION & THREAT LEVEL GAUGE -->
-    <div class="uni-card p-5 border-2 border-uni-border shadow-hard-neon">
+    <div data-module="fusion" class="uni-card p-5 border-2 border-uni-border shadow-hard-neon">
       <div class="corner-accent"></div>
       
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -368,7 +420,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
       
       <!-- Evaluation Scenarios (6 Cols) -->
-      <div class="lg:col-span-6 uni-card p-4">
+      <div data-module="scenarios" class="lg:col-span-6 uni-card p-4">
         <div class="corner-accent"></div>
         <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
           <h3 class="text-xs font-display font-semibold uppercase text-uni-contrast">
@@ -407,7 +459,7 @@
       </div>
 
       <!-- Sensor Replay Deck (6 Cols) -->
-      <div class="lg:col-span-6 uni-card p-4 flex flex-col justify-between">
+      <div data-module="replay" class="lg:col-span-6 uni-card p-4 flex flex-col justify-between">
         <div class="corner-accent"></div>
         <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
           <h3 class="text-xs font-display font-semibold uppercase text-uni-contrast">
@@ -469,7 +521,7 @@
     </div>
 
     <!-- ROW 5: EVENT AUDIT LOG -->
-    <div class="uni-card p-4">
+    <div data-module="eventlog" class="uni-card p-4">
       <div class="corner-accent"></div>
       <div class="flex items-center justify-between mb-3 border-b border-uni-border pb-2">
         <div class="flex items-center gap-2">

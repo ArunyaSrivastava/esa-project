@@ -32,6 +32,12 @@ DEFAULT_ARDUINO_PORT = "COM3"
 DEFAULT_ARDUINO_BAUD = 115200
 ARDUINO_SAMPLING_RATE_HZ = 15  # Arduino hardware sample rate (15-20 Hz)
 
+# Tier 1 wearable transport: "BLE" (ESP32-C3 wireless) or "SERIAL" (Arduino USB)
+# BLE  -> backend.data.ble_adapter.BLEWearableSensorSource
+# SERIAL -> backend.data.arduino_adapter.ArduinoSensorSource
+WEARABLE_SOURCE = "BLE"
+WEARABLE_BLE_DEVICE_NAME = "ESA-WEAR-01"
+
 # Sensor Features
 FEATURE_CHANNELS = ["eda", "ecg", "respiration", "temperature", "acc_mag"]
 NUM_CLASSES = 3  # 0: Baseline, 1: Stress, 2: Amusement

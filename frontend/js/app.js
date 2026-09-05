@@ -68,6 +68,7 @@ let currentTheme = "dark";
 document.addEventListener("DOMContentLoaded", () => {
   initCharts();
   initTheme();
+  initModules();
   connectWebSocket();
   fetchSubjects();
   fetchArduinoPorts();
@@ -89,6 +90,133 @@ function initTheme() {
       currentTheme = currentTheme === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", currentTheme);
       themeBtn.innerHTML = currentTheme === "dark" ? "☀️ Light" : "🌙 Dark";
+    });
+  }
+}
+
+/**
+ * Dashboard Module Visibility Control.
+ * Lets the operator collapse the techy panels (WESAD stream, event log,
+ * replay/senario decks, ML cards) to a clean view via the "Modules" dropdown.
+ * Visibility persists in localStorage so the clean layout is kept per browser.
+ */
+const MODULES = [
+  { id: "camera",       label: "Camera Feed" },
+  { id: "wearable",     label: "Wearable Sensors" },
+  { id: "sensor-model", label: "Sensor ML Model (LSTM)" },
+  { id: "vision-model", label: "Vision ML Model" },
+  { id: "fusion",       label: "Threat Decision Gauge" },
+  { id: "scenarios",    label: "Demo Scenarios" },
+  { id: "replay",       label: "Sensor Replay & Timeline" },
+  { id: "eventlog",     label: "Event Log" },
+];
+const MODULES_STORAGE_KEY = "esa_modules_v1";
+
+let moduleState = loadModuleState();
+
+/**
+ * Default visibility: a clean dashboard on load.
+ * Only the essential panels (Camera + Threat Decision) are shown by default;
+ * all the techy modules (WESAD stream, ML cards, replay, scenarios, event log)
+ * are collapsed. Operators can restore everything via "Show All", or persist
+ * their own preference (which overrides this default via localStorage).
+ */
+const DEFAULT_MODULE_VISIBILITY = {
+  camera: true,
+  wearable: false,
+  "sensor-model": false,
+  "vision-model": false,
+  fusion: true,
+  scenarios: false,
+  replay: false,
+  eventlog: false,
+};
+
+function loadModuleState() {
+  const fallback = Object.assign({}, DEFAULT_MODULE_VISIBILITY);
+  try {
+    const raw = localStorage.getItem(MODULES_STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      MODULES.forEach((m) => {
+        fallback[m.id] = typeof saved[m.id] === "boolean" ? saved[m.id] : fallback[m.id];
+      });
+    }
+  } catch (e) { /* ignore corrupted storage */ }
+  return fallback;
+}
+
+function saveModuleState() {
+  try {
+    localStorage.setItem(MODULES_STORAGE_KEY, JSON.stringify(moduleState));
+  } catch (e) { /* storage may be unavailable */ }
+}
+
+function setAllModules(value) {
+  MODULES.forEach((m) => { moduleState[m.id] = value; });
+  saveModuleState();
+  applyModuleState();
+}
+
+function applyModuleState() {
+  let shown = 0;
+  MODULES.forEach((m) => {
+    const el = document.querySelector(`[data-module="${m.id}"]`);
+    const box = document.querySelector(`[data-module-toggle="${m.id}"]`);
+    const label = document.querySelector(`[data-module-label="${m.id}"]`);
+    const on = moduleState[m.id] === true;
+    if (el) el.classList.toggle("mod-hidden", !on);
+    if (box) box.checked = on;
+    if (label) label.classList.toggle("mod-off", !on);
+    if (on) shown++;
+  });
+  const cnt = document.getElementById("modulesCount");
+  if (cnt) cnt.textContent = `${shown}/${MODULES.length}`;
+}
+
+function initModules() {
+  // 1. Restore saved visibility.
+  applyModuleState();
+
+  // 2. Dropdown open/close.
+  const btn = document.getElementById("btnModules");
+  const dropdown = document.getElementById("moduleDropdown");
+  if (btn && dropdown) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle("hidden");
+    });
+    document.addEventListener("click", (e) => {
+      if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add("hidden");
+      }
+    });
+  }
+
+  // 3. Individual toggles.
+  document.querySelectorAll("[data-module-toggle]").forEach((box) => {
+    box.addEventListener("change", (e) => {
+      const id = e.currentTarget.getAttribute("data-module-toggle");
+      if (!moduleState.hasOwnProperty(id)) return;
+      moduleState[id] = e.currentTarget.checked;
+      saveModuleState();
+      applyModuleState();
+    });
+  });
+
+  // 4. Preset buttons.
+  const showAll = document.getElementById("btnModulesShowAll");
+  const minimal = document.getElementById("btnModulesMinimal");
+  const hideAll = document.getElementById("btnModulesHideAll");
+  if (showAll) showAll.addEventListener("click", () => setAllModules(true));
+  if (hideAll) hideAll.addEventListener("click", () => setAllModules(false));
+  if (minimal) {
+    minimal.addEventListener("click", () => {
+      setAllModules(false);
+      moduleState.camera = true;
+      moduleState.fusion = true;
+      saveModuleState();
+      applyModuleState();
     });
   }
 }

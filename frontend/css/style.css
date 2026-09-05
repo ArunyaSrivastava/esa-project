@@ -243,3 +243,53 @@ body {
   top: 0;
   bottom: 0;
 }
+
+/* ============ Module Visibility Control ============ */
+
+/* Hidden state applied by JS */
+.mod-hidden {
+  display: none !important;
+}
+
+/* Dropdown toggle rows */
+.mod-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--uni-text-contrast);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.mod-toggle:hover {
+  background: rgba(0, 240, 255, 0.06);
+}
+.mod-toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--uni-neon);
+  flex-shrink: 0;
+}
+
+/* Color indicator dot next to each module name */
+.mod-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.mod-dot-neon   { background: var(--uni-neon); }
+.mod-dot-cyan   { background: var(--uni-cyan); }
+.mod-dot-alert  { background: var(--uni-alert); }
+.mod-dot-warning{ background: var(--uni-warning); }
+
+/* Dim the checkbox row when its module is hidden */
+.mod-toggle.mod-off {
+  opacity: 0.45;
+}

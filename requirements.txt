@@ -12,3 +12,5 @@ scikit-learn>=1.2.0
 matplotlib>=3.7.0
 requests>=2.31.0
 python-multipart>=0.0.6
+bleak>=0.21.0
+ucimlrepo>=0.0.6
