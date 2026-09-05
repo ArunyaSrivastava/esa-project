@@ -110,7 +110,7 @@ const MODULES = [
   { id: "replay",       label: "Sensor Replay & Timeline" },
   { id: "eventlog",     label: "Event Log" },
 ];
-const MODULES_STORAGE_KEY = "esa_modules_v1";
+const MODULES_STORAGE_KEY = "esa_modules_v2";
 
 let moduleState = loadModuleState();
 
